@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101c27" />
+    <title>SplitPay Lab — satire checkout prototype</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="SplitPay Lab">
+        <a class="brand" href="#top" aria-label="SplitPay Lab home">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span>SplitPay <em>Lab</em></span>
+        </a>
+        <span class="demo-chip"><i></i> Simulation mode</span>
+      </nav>
+
+      <header id="top" class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">SATIRICAL FINTECH PROTOTYPE</p>
+          <h1>One bill.<br /><span>Too many</span> approvals.</h1>
+          <p class="lede">A deliberately awkward checkout experiment. See how one invoice becomes a handful of tiny, prefilled <strong>pretend</strong> payments.</p>
+          <div class="hero-notes">
+            <span>✦ Front-end only</span>
+            <span>✦ Zero money movement</span>
+          </div>
+        </div>
+        <aside class="hero-card" aria-label="Prototype rules">
+          <div class="card-kicker">HOW THIS DEMO WORKS</div>
+          <ol>
+            <li><span>01</span> Give the invoice a fictional merchant reference.</li>
+            <li><span>02</span> Split it into absurdly small approvals.</li>
+            <li><span>03</span> Scan a card to preview its prefilled amount.</li>
+          </ol>
+          <div class="hero-card-footer">Designed to provoke a UX conversation.</div>
+        </aside>
+      </header>
+
+      <section class="notice" aria-label="Important disclaimer">
+        <div class="notice-icon" aria-hidden="true">!</div>
+        <div>
+          <strong>Parody prototype — not a payment product.</strong>
+          <p>Every QR contains a fictional <code>splitpay-demo://</code> payload. It cannot open a UPI app, access a payment account, or transfer money.</p>
+        </div>
+      </section>
+
+      <section class="generator" aria-labelledby="generator-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">PAYMENT SPLITTER</p>
+            <h2 id="generator-title">Create a fictional checkout</h2>
+          </div>
+          <p class="step-count">Step <strong>1</strong> of 1</p>
+        </div>
+
+        <form id="split-form" novalidate>
+          <div class="form-grid">
+            <label class="field merchant-field">
+              <span class="field-label">Source QR / merchant reference</span>
+              <span class="input-wrap">
+                <span class="input-icon" aria-hidden="true">▦</span>
+                <input id="merchant-ref" maxlength="60" autocomplete="off" value="DEMO-COFFEE-SHOP-QR" required />
+              </span>
+              <small>Use a made-up label only. This is not a live QR decoder.</small>
+            </label>
+            <label class="field amount-field">
+              <span class="field-label">Invoice amount</span>
+              <span class="input-wrap currency-wrap">
+                <span class="currency-symbol" aria-hidden="true">₹</span>
+                <input id="amount" type="number" min="1" max="1000000" step="1" inputmode="numeric" value="7500" required />
+              </span>
+              <small>Each full demo payment lands between ₹1,800 and ₹1,999.</small>
+            </label>
+          </div>
+          <div class="generator-footer">
+            <p id="validation-message" class="validation-message" aria-live="polite">Your total is always preserved — only the fictional checkout gets worse.</p>
+            <button class="primary-button" type="submit">
+              <span>Generate pretend QR codes</span><span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section id="results" class="results" aria-live="polite" hidden>
+        <div class="results-topline">
+          <div>
+            <p class="eyebrow">YOUR CHECKOUT PLAN</p>
+            <h2><span id="qr-count">0</span> tiny approvals for <span id="invoice-total">₹0</span></h2>
+          </div>
+          <button id="regenerate" class="text-button" type="button"><span aria-hidden="true">↻</span> Shuffle split</button>
+        </div>
+
+        <div class="checkout-overview">
+          <div class="overview-main">
+            <div class="overview-label">Fictional invoice</div>
+            <div id="invoice-id" class="invoice-id">—</div>
+            <div class="overview-meta"><span id="merchant-summary">—</span><span aria-hidden="true">•</span><span id="amount-summary">₹0</span></div>
+          </div>
+          <div class="progress-area">
+            <div class="progress-copy"><span id="progress-label">0 of 0 simulated</span><span id="progress-percent">0%</span></div>
+            <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="progress-label"><span id="progress-fill"></span></div>
+            <p id="progress-note">Tap a QR card to preview its prefilled payment.</p>
+          </div>
+          <div class="friction-meter" aria-label="Friction meter: extremely high">
+            <span>FRICTION LEVEL</span>
+            <strong>Needlessly high</strong>
+            <div class="friction-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+
+        <div id="qr-grid" class="qr-grid"></div>
+      </section>
+
+      <footer>
+        <span>SplitPay Lab © <span id="year"></span></span>
+        <span>Built for a product-thinking conversation, not checkout.</span>
+      </footer>
+    </main>
+
+    <dialog id="payment-dialog" aria-labelledby="dialog-title">
+      <div class="phone-shell">
+        <div class="phone-status"><span>9:41</span><span>●●● ▰</span></div>
+        <div class="app-bar"><button id="cancel-pay" type="button" aria-label="Close payment preview">‹</button><span>Payment preview</span><span></span></div>
+        <div class="merchant-avatar" aria-hidden="true">S</div>
+        <p class="pay-to">Paying SplitPay demo merchant</p>
+        <h2 id="dialog-title">₹0</h2>
+        <p class="preview-caption">Amount prefilled from fictional QR</p>
+        <div class="payment-detail-box">
+          <div><span>Reference</span><strong id="dialog-merchant"></strong></div>
+          <div><span>Invoice</span><strong id="dialog-invoice"></strong></div>
+          <div><span>Approval</span><strong id="dialog-sequence"></strong></div>
+        </div>
+        <p class="preview-disclaimer">This confirms nothing. It only changes the state of this demo.</p>
+        <button id="confirm-pay" class="pay-button" type="button">Simulate payment <span aria-hidden="true">→</span></button>
+      </div>
+    </dialog>
+
+    <template id="card-template">
+      <article class="qr-card">
+        <div class="card-heading">
+          <span class="sequence"></span>
+          <span class="status"><i></i><span>Awaiting scan</span></span>
+        </div>
+        <button class="qr-button" type="button" aria-label="Preview payment amount">
+          <span class="qr"></span>
+          <span class="scan-hint"><span aria-hidden="true">⌁</span> Preview scan</span>
+        </button>
+        <div class="payment-info">
+          <p class="payment-amount"></p>
+          <p class="payment-detail"></p>
+        </div>
+        <div class="card-footer">
+          <button class="simulate-button" type="button">Preview payment</button>
+          <button class="copy-button" type="button" aria-label="Copy fictional QR payload" title="Copy fictional QR payload">⧉</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
