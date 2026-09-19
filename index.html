@@ -7,7 +7,8 @@
     <title>SplitPay Lab — satire checkout prototype</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="shell">
@@ -16,14 +17,14 @@
           <span class="brand-mark" aria-hidden="true">S</span>
           <span>SplitPay <em>Lab</em></span>
         </a>
-        <span class="demo-chip"><i></i> Simulation mode</span>
+        <span class="demo-chip"><i></i> Browser prototype</span>
       </nav>
 
       <header id="top" class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">SATIRICAL FINTECH PROTOTYPE</p>
-          <h1>One bill.<br /><span>Too many</span> approvals.</h1>
-          <p class="lede">A deliberately awkward checkout experiment. See how one invoice becomes a handful of tiny, prefilled <strong>pretend</strong> payments.</p>
+          <p class="eyebrow">SMART PAYMENT SPLITTER</p>
+          <h1>One bill.<br /><span>Small, clear</span> payments.</h1>
+          <p class="lede">Turn one merchant QR into a tidy payment plan. Each card gets a random amount under ₹2,000, while the total stays exact.</p>
           <div class="hero-notes">
             <span>✦ Front-end only</span>
             <span>✦ Zero money movement</span>
@@ -32,19 +33,19 @@
         <aside class="hero-card" aria-label="Prototype rules">
           <div class="card-kicker">HOW THIS DEMO WORKS</div>
           <ol>
-            <li><span>01</span> Give the invoice a fictional merchant reference.</li>
-            <li><span>02</span> Split it into absurdly small approvals.</li>
-            <li><span>03</span> Scan a card to preview its prefilled amount.</li>
+            <li><span>01</span> Upload or scan the merchant QR.</li>
+            <li><span>02</span> Enter the full invoice amount.</li>
+            <li><span>03</span> Pay each prefilled amount from your UPI app.</li>
           </ol>
-          <div class="hero-card-footer">Designed to provoke a UX conversation.</div>
+          <div class="hero-card-footer">Built for quick, camera-first checkout.</div>
         </aside>
       </header>
 
       <section class="notice" aria-label="Important disclaimer">
-        <div class="notice-icon" aria-hidden="true">!</div>
+        <div class="notice-icon" aria-hidden="true">i</div>
         <div>
-          <strong>Parody prototype — not a payment product.</strong>
-          <p>Every QR contains a fictional <code>splitpay-demo://</code> payload. It cannot open a UPI app, access a payment account, or transfer money.</p>
+          <strong>Use only with a merchant QR you are authorized to use.</strong>
+          <p>Decoded UPI details are used only in this browser session. Always verify the payee and amount in your UPI app before approving.</p>
         </div>
       </section>
 
@@ -52,20 +53,38 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">PAYMENT SPLITTER</p>
-            <h2 id="generator-title">Create a fictional checkout</h2>
+            <h2 id="generator-title">Build a payment plan</h2>
           </div>
           <p class="step-count">Step <strong>1</strong> of 1</p>
         </div>
 
         <form id="split-form" novalidate>
           <div class="form-grid">
+            <div class="source-field">
+              <span class="field-label">Merchant QR</span>
+              <div class="source-actions">
+                <button id="upload-qr" class="source-button" type="button"><span aria-hidden="true">↑</span> Upload image</button>
+                <button id="camera-qr" class="source-button" type="button"><span aria-hidden="true">⌾</span> Scan with camera</button>
+                <input id="qr-file" type="file" accept="image/*" hidden />
+              </div>
+              <div id="source-preview" class="source-preview" aria-live="polite"><span class="source-placeholder">No QR selected yet</span></div>
+              <small>We read the QR in your browser. Camera access needs HTTPS or localhost.</small>
+            </div>
             <label class="field merchant-field">
-              <span class="field-label">Source QR / merchant reference</span>
+              <span class="field-label">Merchant name or reference</span>
               <span class="input-wrap">
                 <span class="input-icon" aria-hidden="true">▦</span>
                 <input id="merchant-ref" maxlength="60" autocomplete="off" value="DEMO-COFFEE-SHOP-QR" required />
               </span>
-              <small>Use a made-up label only. This is not a live QR decoder.</small>
+              <small>Shown on each payment card so the payer can check the destination.</small>
+            </label>
+            <label class="field vpa-field">
+              <span class="field-label">Merchant UPI ID <span>(optional if QR is decoded)</span></span>
+              <span class="input-wrap">
+                <span class="input-icon" aria-hidden="true">@</span>
+                <input id="merchant-vpa" maxlength="80" autocomplete="off" placeholder="merchant@bank" />
+              </span>
+              <small id="source-status">Add a UPI ID or decode one from the merchant QR.</small>
             </label>
             <label class="field amount-field">
               <span class="field-label">Invoice amount</span>
@@ -73,13 +92,13 @@
                 <span class="currency-symbol" aria-hidden="true">₹</span>
                 <input id="amount" type="number" min="1" max="1000000" step="1" inputmode="numeric" value="7500" required />
               </span>
-              <small>Each full demo payment lands between ₹1,800 and ₹1,999.</small>
+              <small>Every payment is between ₹1,700 and ₹1,999, including the final one.</small>
             </label>
           </div>
           <div class="generator-footer">
-            <p id="validation-message" class="validation-message" aria-live="polite">Your total is always preserved — only the fictional checkout gets worse.</p>
+            <p id="validation-message" class="validation-message" aria-live="polite">Your total is preserved and each payment stays below ₹2,000.</p>
             <button class="primary-button" type="submit">
-              <span>Generate pretend QR codes</span><span aria-hidden="true">→</span>
+              <span>Build payment plan</span><span aria-hidden="true">→</span>
             </button>
           </div>
         </form>
@@ -96,7 +115,7 @@
 
         <div class="checkout-overview">
           <div class="overview-main">
-            <div class="overview-label">Fictional invoice</div>
+            <div class="overview-label">Payment plan</div>
             <div id="invoice-id" class="invoice-id">—</div>
             <div class="overview-meta"><span id="merchant-summary">—</span><span aria-hidden="true">•</span><span id="amount-summary">₹0</span></div>
           </div>
@@ -126,16 +145,24 @@
         <div class="phone-status"><span>9:41</span><span>●●● ▰</span></div>
         <div class="app-bar"><button id="cancel-pay" type="button" aria-label="Close payment preview">‹</button><span>Payment preview</span><span></span></div>
         <div class="merchant-avatar" aria-hidden="true">S</div>
-        <p class="pay-to">Paying SplitPay demo merchant</p>
+        <p class="pay-to">Paying the merchant above</p>
         <h2 id="dialog-title">₹0</h2>
-        <p class="preview-caption">Amount prefilled from fictional QR</p>
+        <p class="preview-caption">Amount prefilled from this payment QR</p>
         <div class="payment-detail-box">
           <div><span>Reference</span><strong id="dialog-merchant"></strong></div>
           <div><span>Invoice</span><strong id="dialog-invoice"></strong></div>
           <div><span>Approval</span><strong id="dialog-sequence"></strong></div>
         </div>
-        <p class="preview-disclaimer">This confirms nothing. It only changes the state of this demo.</p>
+        <p class="preview-disclaimer">Confirm the payee and amount in your UPI app before paying.</p>
         <button id="confirm-pay" class="pay-button" type="button">Simulate payment <span aria-hidden="true">→</span></button>
+      </div>
+    </dialog>
+
+    <dialog id="scanner-dialog" aria-labelledby="scanner-title">
+      <div class="scanner-shell">
+        <div class="scanner-header"><div><p class="eyebrow">MERCHANT QR</p><h2 id="scanner-title">Scan with camera</h2></div><button id="close-scanner" class="icon-button" type="button" aria-label="Close scanner">×</button></div>
+        <div class="camera-frame"><video id="camera-video" playsinline autoplay muted></video><span class="scan-line" aria-hidden="true"></span><p id="camera-status">Point your camera at a UPI QR code.</p></div>
+        <p class="scanner-note">Your camera feed stays in this browser and stops when you close the scanner.</p>
       </div>
     </dialog>
 
@@ -155,7 +182,7 @@
         </div>
         <div class="card-footer">
           <button class="simulate-button" type="button">Preview payment</button>
-          <button class="copy-button" type="button" aria-label="Copy fictional QR payload" title="Copy fictional QR payload">⧉</button>
+          <button class="copy-button" type="button" aria-label="Copy payment link" title="Copy payment link">⧉</button>
         </div>
       </article>
     </template>
