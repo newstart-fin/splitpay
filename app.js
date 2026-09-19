@@ -306,8 +306,19 @@ cancelPay.addEventListener('click', () => dialog.close());
 confirmPay.addEventListener('click', handlePaymentAction);
 dialog.addEventListener('close', () => { selectedPart = null; });
 document.querySelector('#year').textContent = new Date().getFullYear();
-uploadButton.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', event => { if (event.target.files[0]) decodeImage(event.target.files[0]); });
+uploadButton.addEventListener('click', () => {
+  try {
+    if (typeof fileInput.showPicker === 'function') fileInput.showPicker();
+    else fileInput.click();
+  } catch (error) {
+    fileInput.click();
+  }
+});
+fileInput.addEventListener('change', event => {
+  const file = event.target.files[0];
+  if (file) decodeImage(file);
+  event.target.value = '';
+});
 cameraButton.addEventListener('click', openCamera);
 closeScanner.addEventListener('click', closeCamera);
 scannerDialog.addEventListener('close', () => { cameraStream?.getTracks().forEach(track => track.stop()); cameraStream = null; });
