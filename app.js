@@ -82,6 +82,26 @@ function payloadFor(part, index) {
   return 'splitpay-demo://preview?' + params;
 }
 
+function merchantQrPayload() {
+  if (!current.vpa) return payloadFor({ amount: 0 }, 0);
+  const params = new URLSearchParams({
+    pa: current.vpa,
+    pn: current.merchant,
+    cu: 'INR'
+  });
+  return 'upi://pay?' + params;
+}
+
+function extractVpa(payload) {
+  try {
+    const parsed = new URL(payload);
+    return parsed.searchParams.get('pa') || '';
+  } catch (error) {
+    const match = payload.match(/(?:^|[?&])pa=([^&]+)/i);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+}
+
 function getPaidCount() {
   return current.parts.filter(part => part.paid).length;
 }
@@ -126,16 +146,17 @@ function render() {
   current.parts.forEach((part, index) => {
     const card = template.content.firstElementChild.cloneNode(true);
     const payload = payloadFor(part, index);
+    const qrPayload = merchantQrPayload();
     const preview = () => openPayment(part, index, card);
     card.querySelector('.sequence').textContent = 'Approval ' + String(index + 1).padStart(2, '0');
     card.querySelector('.payment-amount').textContent = inr(part.amount);
     card.querySelector('.payment-detail').textContent = current.vpa
-      ? 'UPI amount prefilled · ' + (index + 1) + ' of ' + current.parts.length
+      ? 'Same merchant QR · ' + (index + 1) + ' of ' + current.parts.length
       : 'Demo QR · add a VPA for a payable UPI code';
 
     const qrTarget = card.querySelector('.qr');
     new QRCode(qrTarget, {
-      text: payload,
+      text: qrPayload,
       width: 172,
       height: 172,
       colorDark: '#10222f',
@@ -190,13 +211,7 @@ function generate() {
 }
 
 function setDecodedPayload(payload, imageUrl = '') {
-  let vpa = '';
-  try {
-    const query = payload.includes('?') ? payload.split('?')[1] : '';
-    vpa = new URLSearchParams(query).get('pa') || '';
-  } catch (error) {
-    vpa = '';
-  }
+  const vpa = extractVpa(payload).trim().toLowerCase();
   if (!vpa || !/^[^@]+@[^@]+$/.test(vpa)) {
     sourceStatus.textContent = 'QR found, but it does not contain a readable UPI ID. Enter one below.';
     sourceStatus.style.color = '#b1442e';
@@ -280,7 +295,9 @@ function openPayment(part, index, card) {
 function handlePaymentAction() {
   if (!selectedPart || selectedPart.part.paid) return;
   if (current.vpa) {
-    window.location.href = payloadFor(selectedPart.part, selectedPart.index);
+    const paymentLink = document.createElement('a');
+    paymentLink.href = payloadFor(selectedPart.part, selectedPart.index);
+    paymentLink.click();
     return;
   }
   markSelectedAsPaid();
