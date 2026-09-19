@@ -242,20 +242,19 @@ function scanCameraFrame() {
 }
 
 async function openCamera() {
+  scannerDialog.showModal();
+  cameraStatus.textContent = 'Requesting camera access...';
   if (!navigator.mediaDevices?.getUserMedia) {
     cameraStatus.textContent = 'Camera access is unavailable here. Upload a QR image instead.';
-    scannerDialog.showModal();
     return;
   }
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
     cameraVideo.srcObject = cameraStream;
     cameraStatus.textContent = 'Point your camera at a UPI QR code.';
-    scannerDialog.showModal();
     cameraFrame = requestAnimationFrame(scanCameraFrame);
   } catch (error) {
     cameraStatus.textContent = 'Camera permission was not granted. Upload a QR image instead.';
-    scannerDialog.showModal();
   }
 }
 
@@ -306,11 +305,9 @@ cancelPay.addEventListener('click', () => dialog.close());
 confirmPay.addEventListener('click', handlePaymentAction);
 dialog.addEventListener('close', () => { selectedPart = null; });
 document.querySelector('#year').textContent = new Date().getFullYear();
-uploadButton.addEventListener('click', () => {
-  try {
-    if (typeof fileInput.showPicker === 'function') fileInput.showPicker();
-    else fileInput.click();
-  } catch (error) {
+uploadButton.addEventListener('keydown', event => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
     fileInput.click();
   }
 });
