@@ -34,6 +34,9 @@ let current = { merchant: '', vpa: '', amount: 0, invoice: '', sourcePayload: ''
 let selectedPart = null;
 let cameraStream = null;
 let cameraFrame = null;
+let cameraCanvas = null;
+let cameraScanBusy = false;
+let barcodeDetector = null;
 
 const inr = value => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 0
@@ -223,7 +226,7 @@ function setDecodedPayload(payload, imageUrl = '') {
   if (!vpa || !/^[^@]+@[^@]+$/.test(vpa)) {
     sourceStatus.textContent = 'QR found, but it does not contain a readable UPI ID. Enter one below.';
     sourceStatus.style.color = '#b1442e';
-    return;
+    return false;
   }
   vpaInput.value = vpa;
   current.sourcePayload = payload;
@@ -232,6 +235,7 @@ function setDecodedPayload(payload, imageUrl = '') {
   sourceStatus.textContent = 'Ready. The merchant VPA will be used for each generated payment.';
   sourceStatus.style.color = '#167451';
   if (scannerDialog.open) closeCamera();
+  return true;
 }
 
 function decodeImage(file) {
@@ -239,30 +243,66 @@ function decodeImage(file) {
   const image = new Image();
   image.onload = () => {
     const canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     const context = canvas.getContext('2d', { willReadFrequently: true });
     context.drawImage(image, 0, 0);
-    const result = jsQR(context.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-    if (result) setDecodedPayload(result.data, imageUrl);
-    else sourceStatus.textContent = 'Could not find a QR in that image. Try a sharper crop.';
+    const result = jsQR(
+      context.getImageData(0, 0, canvas.width, canvas.height).data,
+      canvas.width,
+      canvas.height,
+      { inversionAttempts: 'attemptBoth' }
+    );
+    if (result) setDecodedPayload(result.data, canvas.toDataURL('image/jpeg', 0.9));
+    else sourceStatus.textContent = 'Could not find a QR in that image. Center the code and try again.';
+    URL.revokeObjectURL(imageUrl);
+  };
+  image.onerror = () => {
+    sourceStatus.textContent = 'That image could not be opened. Try another QR image.';
+    URL.revokeObjectURL(imageUrl);
   };
   image.src = imageUrl;
 }
 
-function scanCameraFrame() {
-  if (!cameraStream || cameraVideo.readyState < 2) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = cameraVideo.videoWidth;
-  canvas.height = cameraVideo.videoHeight;
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-  const result = jsQR(context.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-  if (result) {
-    setDecodedPayload(result.data, canvas.toDataURL('image/jpeg', 0.88));
+async function scanCameraFrame() {
+  if (!cameraStream || cameraVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || cameraScanBusy) return;
+  if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) {
+    cameraFrame = setTimeout(scanCameraFrame, 120);
     return;
   }
-  cameraFrame = requestAnimationFrame(scanCameraFrame);
+  cameraScanBusy = true;
+  cameraCanvas ??= document.createElement('canvas');
+  cameraCanvas.width = cameraVideo.videoWidth;
+  cameraCanvas.height = cameraVideo.videoHeight;
+  const context = cameraCanvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+  let payload = '';
+  if (barcodeDetector) {
+    try {
+      const detected = await barcodeDetector.detect(cameraCanvas);
+      payload = detected.find(code => code.rawValue)?.rawValue || '';
+    } catch (error) {
+      barcodeDetector = null;
+    }
+  }
+  if (!payload) {
+    const result = jsQR(
+      context.getImageData(0, 0, cameraCanvas.width, cameraCanvas.height).data,
+      cameraCanvas.width,
+      cameraCanvas.height,
+      { inversionAttempts: 'attemptBoth' }
+    );
+    payload = result?.data || '';
+  }
+  cameraScanBusy = false;
+  if (payload) {
+    const accepted = setDecodedPayload(payload, cameraCanvas.toDataURL('image/jpeg', 0.9));
+    if (accepted) return;
+  }
+  if (cameraStream) {
+    cameraFrame = setTimeout(scanCameraFrame, 120);
+  }
 }
 
 async function openCamera() {
@@ -273,17 +313,29 @@ async function openCamera() {
     return;
   }
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
     cameraVideo.srcObject = cameraStream;
-    cameraStatus.textContent = 'Point your camera at a UPI QR code.';
-    cameraFrame = requestAnimationFrame(scanCameraFrame);
+    await cameraVideo.play();
+    try {
+      barcodeDetector = 'BarcodeDetector' in window
+        ? new BarcodeDetector({ formats: ['qr_code'] })
+        : null;
+    } catch (error) {
+      barcodeDetector = null;
+    }
+    cameraStatus.textContent = 'Center the QR inside the frame. Scanning automatically...';
+    cameraFrame = setTimeout(scanCameraFrame, 250);
   } catch (error) {
     cameraStatus.textContent = 'Camera permission was not granted. Upload a QR image instead.';
   }
 }
 
 function closeCamera() {
-  if (cameraFrame) cancelAnimationFrame(cameraFrame);
+  if (cameraFrame) clearTimeout(cameraFrame);
+  cameraScanBusy = false;
   cameraStream?.getTracks().forEach(track => track.stop());
   cameraStream = null;
   cameraVideo.srcObject = null;
