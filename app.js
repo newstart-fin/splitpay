@@ -30,7 +30,7 @@ const closeScanner = document.querySelector('#close-scanner');
 const cameraVideo = document.querySelector('#camera-video');
 const cameraStatus = document.querySelector('#camera-status');
 
-let current = { merchant: '', vpa: '', amount: 0, invoice: '', parts: [] };
+let current = { merchant: '', vpa: '', amount: 0, invoice: '', sourcePayload: '', parts: [] };
 let selectedPart = null;
 let cameraStream = null;
 let cameraFrame = null;
@@ -42,8 +42,11 @@ const inr = value => new Intl.NumberFormat('en-IN', {
 function splitAmount(totalAmount) {
   const minimum = 1700;
   const maximum = 1999;
-  let partCount = Math.ceil(totalAmount / maximum);
-  while (totalAmount < partCount * minimum) partCount += 1;
+  const partCount = Array.from(
+    { length: Math.floor(totalAmount / minimum) - Math.ceil(totalAmount / maximum) + 1 },
+    (_, index) => Math.ceil(totalAmount / maximum) + index
+  ).find(count => count * minimum <= totalAmount && totalAmount <= count * maximum);
+  if (!partCount) return [];
   const parts = Array(partCount).fill(minimum);
   let remaining = totalAmount - (partCount * minimum);
   while (remaining > 0) {
@@ -61,6 +64,15 @@ function createInvoiceId() {
 }
 
 function payloadFor(part, index) {
+  if (current.sourcePayload) {
+    try {
+      const parsed = new URL(current.sourcePayload);
+      parsed.searchParams.set('am', part.amount.toFixed(2));
+      parsed.searchParams.set('tn', current.invoice + ' ' + String(index + 1) + '/' + String(current.parts.length));
+      return parsed.toString();
+    } catch (error) {
+    }
+  }
   if (current.vpa) {
     const params = new URLSearchParams({
       pa: current.vpa,
@@ -146,7 +158,6 @@ function render() {
   current.parts.forEach((part, index) => {
     const card = template.content.firstElementChild.cloneNode(true);
     const payload = payloadFor(part, index);
-    const qrPayload = merchantQrPayload();
     const preview = () => openPayment(part, index, card);
     card.querySelector('.sequence').textContent = 'Approval ' + String(index + 1).padStart(2, '0');
     card.querySelector('.payment-amount').textContent = inr(part.amount);
@@ -156,7 +167,7 @@ function render() {
 
     const qrTarget = card.querySelector('.qr');
     new QRCode(qrTarget, {
-      text: qrPayload,
+      text: payload,
       width: 172,
       height: 172,
       colorDark: '#10222f',
@@ -193,6 +204,12 @@ function generate() {
     amountInput.focus();
     return;
   }
+  const parts = splitAmount(amount);
+  if (!parts.length) {
+    setValidation('This amount cannot be split into payments between ₹1,700 and ₹1,999. Try a nearby total.', true);
+    amountInput.focus();
+    return;
+  }
   const vpa = vpaInput.value.trim().toLowerCase();
   if (vpa && !/^[a-z0-9._-]+@[a-z0-9.-]+$/i.test(vpa)) {
     setValidation('Enter a valid merchant UPI ID, such as merchant@bank.', true);
@@ -205,7 +222,8 @@ function generate() {
     vpa,
     amount,
     invoice: createInvoiceId(),
-    parts: splitAmount(amount).map(value => ({ amount: value, paid: false }))
+    sourcePayload: current.sourcePayload,
+    parts: parts.map(value => ({ amount: value, paid: false }))
   };
   render();
 }
@@ -218,6 +236,7 @@ function setDecodedPayload(payload, imageUrl = '') {
     return;
   }
   vpaInput.value = vpa;
+  current.sourcePayload = payload;
   sourcePreview.classList.add('is-ready');
   sourcePreview.innerHTML = imageUrl ? '<img alt="Uploaded merchant QR preview" src="' + imageUrl + '"><strong>QR decoded: ' + vpa + '</strong>' : '<strong>QR decoded: ' + vpa + '</strong>';
   sourceStatus.textContent = 'Ready. The merchant VPA will be used for each generated payment.';
@@ -336,5 +355,3 @@ fileInput.addEventListener('change', event => {
 cameraButton.addEventListener('click', openCamera);
 closeScanner.addEventListener('click', closeCamera);
 scannerDialog.addEventListener('close', () => { cameraStream?.getTracks().forEach(track => track.stop()); cameraStream = null; });
-
-generate();
