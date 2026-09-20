@@ -94,16 +94,6 @@ function payloadFor(part, index) {
   return 'splitpay-demo://preview?' + params;
 }
 
-function merchantQrPayload() {
-  if (!current.vpa) return payloadFor({ amount: 0 }, 0);
-  const params = new URLSearchParams({
-    pa: current.vpa,
-    pn: current.merchant,
-    cu: 'INR'
-  });
-  return 'upi://pay?' + params;
-}
-
 function extractVpa(payload) {
   try {
     const parsed = new URL(payload);
@@ -269,7 +259,7 @@ function scanCameraFrame() {
   context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
   const result = jsQR(context.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
   if (result) {
-    setDecodedPayload(result.data);
+    setDecodedPayload(result.data, canvas.toDataURL('image/jpeg', 0.88));
     return;
   }
   cameraFrame = requestAnimationFrame(scanCameraFrame);
@@ -307,18 +297,12 @@ function openPayment(part, index, card) {
   document.querySelector('#dialog-invoice').textContent = current.invoice;
   document.querySelector('#dialog-sequence').textContent = (index + 1) + ' of ' + current.parts.length;
   confirmPay.disabled = part.paid;
-  confirmPay.innerHTML = part.paid ? 'Already marked paid' : current.vpa ? 'Open UPI app <span aria-hidden="true">→</span>' : 'Mark as paid <span aria-hidden="true">→</span>';
+  confirmPay.innerHTML = part.paid ? 'Already marked paid' : 'Mark as paid <span aria-hidden="true">→</span>';
   dialog.showModal();
 }
 
 function handlePaymentAction() {
   if (!selectedPart || selectedPart.part.paid) return;
-  if (current.vpa) {
-    const paymentLink = document.createElement('a');
-    paymentLink.href = payloadFor(selectedPart.part, selectedPart.index);
-    paymentLink.click();
-    return;
-  }
   markSelectedAsPaid();
 }
 
