@@ -24,7 +24,7 @@
         <div class="hero-copy">
           <p class="eyebrow">SMART PAYMENT SPLITTER</p>
           <h1>One bill.<br /><span>Small, clear</span> payments.</h1>
-          <p class="lede">Turn one merchant QR into a tidy payment plan. Each card gets a random amount under ₹2,000, while the total stays exact.</p>
+          <p class="lede">Turn one merchant QR into a tidy payment plan. Regular cards stay between ₹1,700 and ₹1,999, while the final card covers the exact remainder.</p>
           <div class="hero-notes">
             <span>✦ Front-end only</span>
             <span>✦ Zero money movement</span>
@@ -92,11 +92,11 @@
                 <span class="currency-symbol" aria-hidden="true">₹</span>
                 <input id="amount" type="number" min="1" max="1000000" step="1" inputmode="numeric" placeholder="Enter total amount" required />
               </span>
-              <small>Every payment is between ₹1,700 and ₹1,999, including the final one.</small>
+              <small>Regular payments are between ₹1,700 and ₹1,999; the final payment covers the remaining balance.</small>
             </label>
           </div>
           <div class="generator-footer">
-            <p id="validation-message" class="validation-message" aria-live="polite">Your total is preserved and each payment stays below ₹2,000.</p>
+            <p id="validation-message" class="validation-message" aria-live="polite">Any positive total works; regular payments stay between ₹1,700 and ₹1,999.</p>
             <button class="primary-button" type="submit">
               <span>Build payment plan</span><span aria-hidden="true">→</span>
             </button>

@@ -45,20 +45,16 @@ const inr = value => new Intl.NumberFormat('en-IN', {
 function splitAmount(totalAmount) {
   const minimum = 1700;
   const maximum = 1999;
-  const partCount = Array.from(
-    { length: Math.floor(totalAmount / minimum) - Math.ceil(totalAmount / maximum) + 1 },
-    (_, index) => Math.ceil(totalAmount / maximum) + index
-  ).find(count => count * minimum <= totalAmount && totalAmount <= count * maximum);
-  if (!partCount) return [];
-  const parts = Array(partCount).fill(minimum);
-  let remaining = totalAmount - (partCount * minimum);
-  while (remaining > 0) {
-    const available = parts.map((part, index) => ({ index, room: maximum - part })).filter(item => item.room > 0);
-    const slot = available[Math.floor(Math.random() * available.length)];
-    const increase = Math.min(slot.room, remaining, 1 + Math.floor(Math.random() * 300));
-    parts[slot.index] += increase;
+  const regularCount = Math.max(0, Math.floor((totalAmount - minimum) / minimum));
+  const parts = Array(regularCount).fill(minimum);
+  let remaining = totalAmount - (regularCount * minimum);
+  for (let index = 0; index < parts.length; index += 1) {
+    const room = maximum - parts[index];
+    const increase = Math.min(room, Math.max(0, remaining - minimum), Math.floor(Math.random() * 300));
+    parts[index] += increase;
     remaining -= increase;
   }
+  parts.push(remaining);
   return parts;
 }
 
@@ -192,14 +188,14 @@ function generate() {
     merchantInput.focus();
     return;
   }
-  if (!Number.isFinite(amount) || amount < 1700 || amount > 1000000) {
-    setValidation('Enter a whole-number amount between ₹1,700 and ₹10,00,000.', true);
+  if (!Number.isFinite(amount) || amount < 1 || amount > 1000000) {
+    setValidation('Enter a whole-number amount between ₹1 and ₹10,00,000.', true);
     amountInput.focus();
     return;
   }
   const parts = splitAmount(amount);
   if (!parts.length) {
-    setValidation('This amount cannot be split into payments between ₹1,700 and ₹1,999. Try a nearby total.', true);
+    setValidation('This amount could not be split into a payment plan.', true);
     amountInput.focus();
     return;
   }
